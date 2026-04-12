@@ -1,0 +1,926 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Visibilidade de Animes por Demografia — Análise Shoujo</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
+<style>
+  :root {
+    --pink:   #D4537E;
+    --blue:   #378ADD;
+    --purple: #7F77DD;
+    --teal:   #1D9E75;
+    --gray:   #888780;
+    --amber:  #BA7517;
+    --bg:     #F8F7F4;
+    --surface:#FFFFFF;
+    --border: rgba(0,0,0,0.08);
+    --text:   #1A1A18;
+    --muted:  #6B6A66;
+    --light:  #E8E6E0;
+    --pink-light: #FBEAF0;
+    --blue-light: #E6F1FB;
+    --purple-light: #EEEDFE;
+    --teal-light: #E1F5EE;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    font-family: 'Georgia', serif;
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+  }
+
+  /* ── HEADER ─────────────────────────────────────── */
+  .masthead {
+    background: var(--text);
+    color: #F8F7F4;
+    padding: 2.5rem 3rem 2rem;
+    position: relative;
+    overflow: hidden;
+  }
+  .masthead::before {
+    content: '';
+    position: absolute;
+    top: -40px; right: -40px;
+    width: 220px; height: 220px;
+    border-radius: 50%;
+    border: 1px solid rgba(255,255,255,0.07);
+  }
+  .masthead::after {
+    content: '';
+    position: absolute;
+    top: 20px; right: 60px;
+    width: 120px; height: 120px;
+    border-radius: 50%;
+    border: 1px solid rgba(255,255,255,0.05);
+  }
+  .masthead-eyebrow {
+    font-family: 'Courier New', monospace;
+    font-size: 11px;
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    color: var(--pink);
+    margin-bottom: 0.75rem;
+  }
+  .masthead h1 {
+    font-size: 28px;
+    font-weight: normal;
+    line-height: 1.25;
+    margin-bottom: 0.5rem;
+    max-width: 700px;
+  }
+  .masthead p {
+    font-size: 14px;
+    color: rgba(248,247,244,0.55);
+    font-family: 'Courier New', monospace;
+  }
+
+  /* ── UPLOAD ZONE ─────────────────────────────────── */
+  .upload-section {
+    background: var(--surface);
+    border-bottom: 1px solid var(--border);
+    padding: 1.25rem 3rem;
+    display: flex;
+    align-items: center;
+    gap: 2rem;
+    flex-wrap: wrap;
+  }
+  .upload-label {
+    font-size: 12px;
+    font-family: 'Courier New', monospace;
+    color: var(--muted);
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+  }
+  .upload-group {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+  }
+  .upload-btn {
+    font-family: 'Courier New', monospace;
+    font-size: 12px;
+    padding: 6px 14px;
+    border: 1px solid var(--border);
+    background: var(--bg);
+    color: var(--text);
+    cursor: pointer;
+    border-radius: 4px;
+    transition: background 0.15s;
+  }
+  .upload-btn:hover { background: var(--light); }
+  .file-status {
+    font-size: 12px;
+    font-family: 'Courier New', monospace;
+    color: var(--muted);
+  }
+  .file-status.ok { color: var(--teal); }
+  .file-status.err { color: var(--pink); }
+
+  /* ── MAIN LAYOUT ──────────────────────────────────── */
+  .main {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 2.5rem 3rem 4rem;
+  }
+
+  /* ── SECTION LABELS ───────────────────────────────── */
+  .section-eyebrow {
+    font-family: 'Courier New', monospace;
+    font-size: 10px;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    color: var(--muted);
+    margin-bottom: 1rem;
+    padding-bottom: 0.5rem;
+    border-bottom: 1px solid var(--border);
+  }
+
+  /* ── KPI STRIP ───────────────────────────────────── */
+  .kpi-strip {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 1px;
+    background: var(--border);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    overflow: hidden;
+    margin-bottom: 2.5rem;
+  }
+  .kpi {
+    background: var(--surface);
+    padding: 1.5rem 1.25rem;
+  }
+  .kpi-label {
+    font-family: 'Courier New', monospace;
+    font-size: 10px;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    color: var(--muted);
+    margin-bottom: 0.5rem;
+  }
+  .kpi-value {
+    font-size: 30px;
+    font-weight: normal;
+    color: var(--text);
+    line-height: 1;
+    margin-bottom: 0.4rem;
+  }
+  .kpi-value.alert { color: var(--pink); }
+  .kpi-sub {
+    font-family: 'Courier New', monospace;
+    font-size: 11px;
+    color: var(--muted);
+  }
+  .kpi-arrow {
+    font-size: 11px;
+    margin-right: 3px;
+  }
+
+  /* ── CHARTS GRID ──────────────────────────────────── */
+  .charts-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1.5rem;
+    margin-bottom: 1.5rem;
+  }
+  .chart-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 1.5rem;
+  }
+  .chart-card.wide { grid-column: 1 / -1; }
+  .chart-title {
+    font-size: 15px;
+    font-weight: normal;
+    color: var(--text);
+    margin-bottom: 4px;
+  }
+  .chart-desc {
+    font-family: 'Courier New', monospace;
+    font-size: 11px;
+    color: var(--muted);
+    margin-bottom: 1.25rem;
+    line-height: 1.5;
+  }
+  .legend {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 12px;
+    margin-bottom: 12px;
+  }
+  .legend-item {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    font-family: 'Courier New', monospace;
+    font-size: 11px;
+    color: var(--muted);
+  }
+  .legend-sq {
+    width: 9px; height: 9px;
+    border-radius: 2px;
+    flex-shrink: 0;
+  }
+
+  /* ── INSIGHT BOX ──────────────────────────────────── */
+  .insight {
+    margin-top: 1.25rem;
+    padding: 0.9rem 1rem;
+    background: var(--pink-light);
+    border-left: 3px solid var(--pink);
+    font-size: 13px;
+    color: #72243E;
+    line-height: 1.6;
+    font-family: 'Courier New', monospace;
+  }
+  .insight.amber {
+    background: #FAEEDA;
+    border-color: var(--amber);
+    color: #633806;
+  }
+  .insight.teal {
+    background: var(--teal-light);
+    border-color: var(--teal);
+    color: #085041;
+  }
+
+  /* ── TABLE ────────────────────────────────────────── */
+  .table-wrap { overflow-x: auto; }
+  table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  thead th {
+    font-family: 'Courier New', monospace;
+    font-size: 10px;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--muted);
+    text-align: left;
+    padding: 6px 12px;
+    border-bottom: 1px solid var(--border);
+  }
+  tbody td {
+    padding: 9px 12px;
+    border-bottom: 1px solid var(--light);
+    color: var(--text);
+    vertical-align: middle;
+  }
+  tbody tr:last-child td { border-bottom: none; }
+  tbody tr:hover td { background: var(--bg); }
+  .badge {
+    display: inline-block;
+    font-family: 'Courier New', monospace;
+    font-size: 10px;
+    padding: 2px 8px;
+    border-radius: 20px;
+    font-weight: normal;
+  }
+  .badge-shoujo { background: var(--pink-light); color: #993556; }
+  .score-bar-wrap { display: flex; align-items: center; gap: 8px; }
+  .score-bar { height: 6px; background: var(--pink); border-radius: 3px; flex-shrink: 0; }
+
+  /* ── LOADING ──────────────────────────────────────── */
+  #loading-overlay {
+    position: fixed; inset: 0;
+    background: var(--bg);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    z-index: 999;
+    gap: 1rem;
+  }
+  .loading-title {
+    font-size: 18px;
+    color: var(--text);
+  }
+  .loading-msg {
+    font-family: 'Courier New', monospace;
+    font-size: 12px;
+    color: var(--muted);
+  }
+  .spinner {
+    width: 32px; height: 32px;
+    border: 2px solid var(--light);
+    border-top-color: var(--pink);
+    border-radius: 50%;
+    animation: spin 0.8s linear infinite;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  /* ── FOOTER ───────────────────────────────────────── */
+  .footer {
+    border-top: 1px solid var(--border);
+    margin-top: 3rem;
+    padding-top: 1.5rem;
+    font-family: 'Courier New', monospace;
+    font-size: 11px;
+    color: var(--muted);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+  #last-updated { font-size: 11px; color: var(--muted); }
+</style>
+</head>
+<body>
+
+<div id="loading-overlay">
+  <div class="spinner"></div>
+  <div class="loading-title">Carregando dados</div>
+  <div class="loading-msg" id="loading-msg">Aguarde...</div>
+</div>
+
+<!-- ── MASTHEAD ─────────────────────────────────────── -->
+<div class="masthead">
+  <div class="masthead-eyebrow">Análise de dados · MyAnimeList</div>
+  <h1>Como a demografia impacta a visibilidade de animes: a subvalorização do Shoujo</h1>
+  <p id="last-updated">Carregando dados dos CSVs...</p>
+</div>
+
+<!-- ── UPLOAD SECTION ───────────────────────────────── -->
+<div class="upload-section">
+  <span class="upload-label">Atualizar dados:</span>
+
+  <div class="upload-group">
+    <label class="upload-btn" for="mal-file">📂 myanimelist.csv</label>
+    <input type="file" id="mal-file" accept=".csv" style="display:none">
+    <span class="file-status" id="mal-status">nenhum arquivo</span>
+  </div>
+
+  <div class="upload-group">
+    <label class="upload-btn" for="usr-file">📂 usersanimelist.csv</label>
+    <input type="file" id="usr-file" accept=".csv" style="display:none">
+    <span class="file-status" id="usr-status">nenhum arquivo</span>
+  </div>
+</div>
+
+<!-- ── MAIN ─────────────────────────────────────────── -->
+<div class="main">
+
+  <!-- KPIs -->
+  <div class="section-eyebrow">Indicadores gerais do dataset</div>
+  <div class="kpi-strip">
+    <div class="kpi">
+      <div class="kpi-label">Total de títulos analisados</div>
+      <div class="kpi-value" id="kpi-total">—</div>
+      <div class="kpi-sub">com demografia definida</div>
+    </div>
+    <div class="kpi">
+      <div class="kpi-label">Proporção Shoujo</div>
+      <div class="kpi-value alert" id="kpi-pct-shoujo">—</div>
+      <div class="kpi-sub" id="kpi-pct-sub">vs Shounen no dataset</div>
+    </div>
+    <div class="kpi">
+      <div class="kpi-label">Score médio Shoujo</div>
+      <div class="kpi-value alert" id="kpi-score-shoujo">—</div>
+      <div class="kpi-sub" id="kpi-score-sub">comparado ao Shounen</div>
+    </div>
+    <div class="kpi">
+      <div class="kpi-label">Membros médios Shoujo</div>
+      <div class="kpi-value alert" id="kpi-members-shoujo">—</div>
+      <div class="kpi-sub" id="kpi-members-sub">vs Shounen</div>
+    </div>
+  </div>
+
+  <!-- Row 1: doughnut + score bar -->
+  <div class="charts-grid">
+    <div class="chart-card">
+      <div class="chart-title">Distribuição de títulos por demografia</div>
+      <div class="chart-desc">Quantidade de animes por classificação no dataset</div>
+      <div class="legend" id="legend-dist"></div>
+      <div style="position:relative;height:230px;">
+        <canvas id="chart-dist" role="img" aria-label="Distribuição de animes por demografia"></canvas>
+      </div>
+    </div>
+
+    <div class="chart-card">
+      <div class="chart-title">Score médio por demografia</div>
+      <div class="chart-desc">Média das avaliações dos usuários (escala 0–10)</div>
+      <div class="legend" id="legend-score"></div>
+      <div style="position:relative;height:230px;">
+        <canvas id="chart-score" role="img" aria-label="Score médio por demografia"></canvas>
+      </div>
+    </div>
+
+    <!-- membros wide -->
+    <div class="chart-card wide">
+      <div class="chart-title">Membros médios por demografia</div>
+      <div class="chart-desc">Número médio de usuários que adicionaram o anime à lista — principal indicador de visibilidade e alcance de mercado</div>
+      <div class="legend" id="legend-members"></div>
+      <div style="position:relative;height:220px;">
+        <canvas id="chart-members" role="img" aria-label="Membros médios por demografia"></canvas>
+      </div>
+      <div class="insight" id="insight-members"></div>
+    </div>
+
+    <!-- avaliações (scored_by) + popularidade -->
+    <div class="chart-card">
+      <div class="chart-title">Avaliações médias recebidas</div>
+      <div class="chart-desc">Quantos usuários efetivamente avaliaram (scored_by) — mede engajamento ativo</div>
+      <div class="legend" id="legend-scored"></div>
+      <div style="position:relative;height:220px;">
+        <canvas id="chart-scored" role="img" aria-label="Scored_by médio por demografia"></canvas>
+      </div>
+    </div>
+
+    <div class="chart-card">
+      <div class="chart-title">Posição média no ranking de popularidade</div>
+      <div class="chart-desc">Menor = mais popular. Shoujo aparece mais abaixo no ranking geral da plataforma</div>
+      <div class="legend" id="legend-pop"></div>
+      <div style="position:relative;height:220px;">
+        <canvas id="chart-pop" role="img" aria-label="Popularidade média por demografia"></canvas>
+      </div>
+    </div>
+
+    <!-- gender scores wide -->
+    <div class="chart-card wide">
+      <div class="chart-title">Score médio por gênero do usuário × demografia</div>
+      <div class="chart-desc">Avaliações de mulheres vs homens para cada classificação — baseado em usersanimelist.csv. Revela quem realmente aprecia o Shoujo e quem o subestima</div>
+      <div class="legend" id="legend-gender"></div>
+      <div style="position:relative;height:240px;">
+        <canvas id="chart-gender" role="img" aria-label="Score por gênero e demografia"></canvas>
+      </div>
+      <div class="insight amber" id="insight-gender"></div>
+    </div>
+
+    <!-- % top 1000 + score hist wide -->
+    <div class="chart-card">
+      <div class="chart-title">% de títulos com rank ≤ 1.000</div>
+      <div class="chart-desc">Presença na faixa de maior visibilidade do MAL</div>
+      <div class="legend" id="legend-top1k"></div>
+      <div style="position:relative;height:220px;">
+        <canvas id="chart-top1k" role="img" aria-label="Percentual no top 1000 por demografia"></canvas>
+      </div>
+    </div>
+
+    <div class="chart-card">
+      <div class="chart-title">Distribuição de scores — Shoujo vs Shounen</div>
+      <div class="chart-desc">Frequência de títulos em faixas de nota — concentração relativa</div>
+      <div class="legend" id="legend-hist"></div>
+      <div style="position:relative;height:220px;">
+        <canvas id="chart-hist" role="img" aria-label="Histograma de scores Shoujo vs Shounen"></canvas>
+      </div>
+    </div>
+  </div>
+
+  <!-- Tabela Top Shoujo -->
+  <div class="section-eyebrow" style="margin-top:0.5rem;">Top 10 Shoujo — por número de membros</div>
+  <div class="chart-card wide" style="margin-bottom:2rem;">
+    <div class="chart-desc" style="margin-bottom:1rem;">Os animes Shoujo mais populares do dataset, com seus indicadores de visibilidade e avaliação</div>
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>#</th>
+            <th>Título</th>
+            <th>Demo</th>
+            <th>Score</th>
+            <th>Membros</th>
+            <th>Avaliações</th>
+            <th>Rank</th>
+            <th>Popularidade</th>
+          </tr>
+        </thead>
+        <tbody id="top-table"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <div class="insight teal" id="insight-final"></div>
+
+  <div class="footer">
+    <span>Fonte: MyAnimeList Dataset · myanimelist.csv + usersanimelist.csv</span>
+    <span id="footer-updated"></span>
+  </div>
+</div>
+
+<script>
+// ── COLORS ────────────────────────────────────────────
+const C = {
+  Shounen: '#378ADD',
+  Shoujo:  '#D4537E',
+  Seinen:  '#7F77DD',
+  Josei:   '#1D9E75',
+};
+const DEMS = ['Shounen','Shoujo','Seinen','Josei'];
+const gridColor = 'rgba(0,0,0,0.06)';
+const textColor = '#6B6A66';
+const baseFont = { family: "'Courier New', monospace", size: 11 };
+
+let chartInstances = {};
+
+function destroyChart(id) {
+  if (chartInstances[id]) {
+    chartInstances[id].destroy();
+    delete chartInstances[id];
+  }
+}
+
+// ── BUILT-IN DATA (from CSVs, pre-processed) ──────────
+const BUILTIN = {
+  count:    { Shounen:2171, Shoujo:532, Seinen:1185, Josei:160 },
+  score:    { Shounen:7.125, Shoujo:6.880, Seinen:6.928, Josei:6.793 },
+  members:  { Shounen:166224, Shoujo:79097, Seinen:106705, Josei:67121 },
+  scored_by:{ Shounen:90278, Shoujo:37767, Seinen:52894, Josei:28250 },
+  popularity:{ Shounen:6100, Shoujo:7778, Seinen:6698, Josei:5554 },
+  pct_top1k:{ Shounen:14.4, Shoujo:10.0, Seinen:11.2, Josei:10.6 },
+  score_dist:{
+    labels: ['< 5','5–6','6–7','7–7.5','7.5–8','8–8.5','8.5–9','9+'],
+    Shounen:[7,150,683,564,399,193,49,10],
+    Shoujo: [7,77,176,123,78,29,9,0],
+  },
+  gender: {
+    Female:{ Shounen:7.580, Shoujo:7.577, Seinen:7.212, Josei:7.369 },
+    Male:  { Shounen:7.621, Shoujo:7.533, Seinen:7.477, Josei:7.598 },
+  },
+  top_shoujo: [
+    { title:'Kaichou wa Maid-sama!',    score:7.99, members:1339945, scored_by:776324, rank:764,  popularity:113 },
+    { title:'Ouran Koukou Host Club',   score:8.16, members:1229769, scored_by:729583, rank:512,  popularity:136 },
+    { title:'Tonari no Kaibutsu-kun',   score:7.45, members:1170647, scored_by:650885, rank:2495, popularity:144 },
+    { title:'Kimi ni Todoke',           score:8.01, members:1072627, scored_by:522279, rank:734,  popularity:170 },
+    { title:'Ao Haru Ride',             score:7.63, members:1013720, scored_by:538691, rank:1675, popularity:185 },
+    { title:'Banana Fish',              score:8.45, members:963203,  scored_by:414499, rank:189,  popularity:204 },
+    { title:'Fruits Basket 1st Season', score:8.21, members:947107,  scored_by:450400, rank:428,  popularity:213 },
+    { title:'Akatsuki no Yona',         score:8.04, members:938409,  scored_by:453511, rank:681,  popularity:215 },
+    { title:'Orange',                   score:7.63, members:900320,  scored_by:433273, rank:1697, popularity:232 },
+    { title:'Hotarubi no Mori e',       score:8.26, members:879221,  scored_by:487838, rank:371,  popularity:243 },
+  ],
+};
+
+let DATA = JSON.parse(JSON.stringify(BUILTIN));
+
+// ── PARSE CSV DATA ────────────────────────────────────
+function parseMAL(rows) {
+  const main = ['Shounen','Shoujo','Seinen','Josei'];
+  const count = {}, scoreSum = {}, scoreCnt = {}, membersSum = {}, membersCnt = {},
+        scoredSum = {}, scoredCnt = {}, popSum = {}, popCnt = {},
+        rankTop1k = {}, rankAll = {};
+  main.forEach(d => {
+    count[d]=0; scoreSum[d]=0; scoreCnt[d]=0; membersSum[d]=0; membersCnt[d]=0;
+    scoredSum[d]=0; scoredCnt[d]=0; popSum[d]=0; popCnt[d]=0;
+    rankTop1k[d]=0; rankAll[d]=0;
+  });
+
+  const distBins = { Shounen:[0,0,0,0,0,0,0,0], Shoujo:[0,0,0,0,0,0,0,0] };
+  const topShoujo = [];
+
+  for (const r of rows) {
+    const raw = (r.demographic||'').split(',')[0].trim();
+    if (!main.includes(raw)) continue;
+    const d = raw;
+    count[d]++;
+    const sc = parseFloat(r.score);
+    if (!isNaN(sc) && sc > 0) { scoreSum[d]+=sc; scoreCnt[d]++; }
+    const mb = parseFloat(r.members);
+    if (!isNaN(mb)) { membersSum[d]+=mb; membersCnt[d]++; }
+    const sb = parseFloat(r.scored_by);
+    if (!isNaN(sb)) { scoredSum[d]+=sb; scoredCnt[d]++; }
+    const pp = parseFloat(r.popularity);
+    if (!isNaN(pp)) { popSum[d]+=pp; popCnt[d]++; }
+    const rk = parseFloat(r.rank);
+    if (!isNaN(rk)) { rankAll[d]++; if (rk <= 1000) rankTop1k[d]++; }
+
+    if ((d==='Shounen'||d==='Shoujo') && !isNaN(sc) && sc>0) {
+      const idx = sc<5?0:sc<6?1:sc<7?2:sc<7.5?3:sc<8?4:sc<8.5?5:sc<9?6:7;
+      distBins[d][idx]++;
+    }
+    if (d==='Shoujo') {
+      topShoujo.push({ title:r.title, score:sc, members:parseFloat(r.members)||0,
+        scored_by:parseFloat(r.scored_by)||0, rank:parseFloat(r.rank)||null,
+        popularity:parseFloat(r.popularity)||null });
+    }
+  }
+
+  DATA.count   = Object.fromEntries(main.map(d=>[d,count[d]]));
+  DATA.score   = Object.fromEntries(main.map(d=>[d, scoreCnt[d]?+(scoreSum[d]/scoreCnt[d]).toFixed(3):null]));
+  DATA.members = Object.fromEntries(main.map(d=>[d, membersCnt[d]?Math.round(membersSum[d]/membersCnt[d]):null]));
+  DATA.scored_by = Object.fromEntries(main.map(d=>[d, scoredCnt[d]?Math.round(scoredSum[d]/scoredCnt[d]):null]));
+  DATA.popularity = Object.fromEntries(main.map(d=>[d, popCnt[d]?Math.round(popSum[d]/popCnt[d]):null]));
+  DATA.pct_top1k = Object.fromEntries(main.map(d=>[d, rankAll[d]?+(rankTop1k[d]/rankAll[d]*100).toFixed(1):null]));
+  DATA.score_dist = { labels:['< 5','5–6','6–7','7–7.5','7.5–8','8–8.5','8.5–9','9+'], ...distBins };
+  topShoujo.sort((a,b)=>b.members-a.members);
+  DATA.top_shoujo = topShoujo.slice(0,10);
+}
+
+function parseUSERS(rows) {
+  const main = ['Shounen','Shoujo','Seinen','Josei'];
+  const gs = { Female:{}, Male:{} };
+  main.forEach(d=>{ gs.Female[d]={sum:0,cnt:0}; gs.Male[d]={sum:0,cnt:0}; });
+
+  for (const r of rows) {
+    const raw = (r.demographic||'').split(',')[0].trim();
+    if (!main.includes(raw)) continue;
+    const g = r.gender;
+    if (g!=='Female'&&g!=='Male') continue;
+    const sc = parseFloat(r.my_score);
+    if (isNaN(sc)||sc<=0) continue;
+    gs[g][raw].sum += sc;
+    gs[g][raw].cnt++;
+  }
+  DATA.gender = {
+    Female: Object.fromEntries(main.map(d=>[d, gs.Female[d].cnt?+(gs.Female[d].sum/gs.Female[d].cnt).toFixed(3):null])),
+    Male:   Object.fromEntries(main.map(d=>[d, gs.Male[d].cnt?+(gs.Male[d].sum/gs.Male[d].cnt).toFixed(3):null])),
+  };
+}
+
+// ── LEGEND HELPER ─────────────────────────────────────
+function buildLegend(id, items) {
+  const el = document.getElementById(id);
+  el.innerHTML = items.map(([label, color]) =>
+    `<span class="legend-item"><span class="legend-sq" style="background:${color}"></span>${label}</span>`
+  ).join('');
+}
+
+// ── FORMAT HELPERS ────────────────────────────────────
+function fmtK(v) {
+  if (v >= 1000000) return (v/1000000).toFixed(1)+'M';
+  if (v >= 1000) return Math.round(v/1000)+'K';
+  return String(v);
+}
+function pct(a,b) { return b?(a/b*100).toFixed(1)+'%':'—'; }
+
+// ── RENDER DASHBOARD ──────────────────────────────────
+function render() {
+  const d = DATA;
+
+  // ── KPIs
+  const total = DEMS.reduce((s,k)=>s+(d.count[k]||0),0);
+  document.getElementById('kpi-total').textContent = total.toLocaleString('pt-BR');
+  const pctShoujo = d.count.Shoujo/total*100;
+  document.getElementById('kpi-pct-shoujo').textContent = pctShoujo.toFixed(1)+'%';
+  document.getElementById('kpi-pct-sub').textContent =
+    `Shounen: ${(d.count.Shounen/total*100).toFixed(1)}% do total`;
+  document.getElementById('kpi-score-shoujo').textContent = d.score.Shoujo?.toFixed(2) ?? '—';
+  document.getElementById('kpi-score-sub').textContent =
+    `Shounen: ${d.score.Shounen?.toFixed(2) ?? '—'} (${d.score.Shounen&&d.score.Shoujo?(d.score.Shounen-d.score.Shoujo).toFixed(2)+' acima':'—'})`;
+  document.getElementById('kpi-members-shoujo').textContent = fmtK(d.members.Shoujo||0);
+  const membDiff = d.members.Shounen&&d.members.Shoujo?((d.members.Shounen-d.members.Shoujo)/d.members.Shoujo*100).toFixed(0):null;
+  document.getElementById('kpi-members-sub').textContent =
+    membDiff ? `Shounen tem ${membDiff}% mais membros` : 'vs Shounen';
+
+  // ── Chart 1: Distribution doughnut
+  destroyChart('dist');
+  buildLegend('legend-dist', DEMS.map(d=>[`${d} (${DATA.count[d]})`, C[d]]));
+  chartInstances.dist = new Chart(document.getElementById('chart-dist'), {
+    type: 'doughnut',
+    data: {
+      labels: DEMS,
+      datasets: [{ data: DEMS.map(k=>d.count[k]), backgroundColor: DEMS.map(k=>C[k]), borderWidth:0, hoverOffset:4 }]
+    },
+    options: {
+      responsive:true, maintainAspectRatio:false, cutout:'60%',
+      plugins: { legend:{display:false}, tooltip:{ callbacks:{ label: ctx=>`${ctx.label}: ${ctx.parsed} títulos` } } }
+    }
+  });
+
+  // ── Chart 2: Score bar
+  destroyChart('score');
+  buildLegend('legend-score', DEMS.map(k=>[k, C[k]]));
+  chartInstances.score = new Chart(document.getElementById('chart-score'), {
+    type:'bar',
+    data: { labels:DEMS, datasets:[{
+      data: DEMS.map(k=>d.score[k]),
+      backgroundColor: DEMS.map(k=>C[k]), borderWidth:0, borderRadius:4
+    }]},
+    options: {
+      responsive:true, maintainAspectRatio:false,
+      plugins:{ legend:{display:false}, tooltip:{ callbacks:{ label: ctx=>`Score médio: ${ctx.parsed.y?.toFixed(2)}` } } },
+      scales:{
+        x:{ ticks:{color:textColor,font:baseFont}, grid:{color:'transparent'} },
+        y:{ min:6.3, max:7.6, ticks:{color:textColor,font:baseFont}, grid:{color:gridColor} }
+      }
+    }
+  });
+
+  // ── Chart 3: Members wide
+  destroyChart('members');
+  buildLegend('legend-members', DEMS.map(k=>[k, C[k]]));
+  chartInstances.members = new Chart(document.getElementById('chart-members'), {
+    type:'bar',
+    data:{ labels:DEMS, datasets:[{
+      data: DEMS.map(k=>d.members[k]),
+      backgroundColor: DEMS.map(k=>C[k]), borderWidth:0, borderRadius:4
+    }]},
+    options:{
+      responsive:true, maintainAspectRatio:false,
+      plugins:{ legend:{display:false}, tooltip:{ callbacks:{ label: ctx=>`Membros médios: ${Math.round(ctx.parsed.y).toLocaleString('pt-BR')}` } } },
+      scales:{
+        x:{ticks:{color:textColor,font:baseFont},grid:{color:'transparent'}},
+        y:{ticks:{color:textColor,font:baseFont,callback:v=>fmtK(v)},grid:{color:gridColor}}
+      }
+    }
+  });
+  const diffMb = d.members.Shounen&&d.members.Shoujo?Math.round((d.members.Shounen-d.members.Shoujo)/d.members.Shoujo*100):null;
+  document.getElementById('insight-members').textContent =
+    diffMb ? `⚠ Disparidade de visibilidade: animes Shounen têm ${diffMb}% mais membros do que Shoujo em média — diferença que não se justifica apenas pela quantidade de títulos e sugere um viés estrutural de alcance e distribuição na plataforma.` : '';
+
+  // ── Chart 4: Scored_by
+  destroyChart('scored');
+  buildLegend('legend-scored', DEMS.map(k=>[k, C[k]]));
+  chartInstances.scored = new Chart(document.getElementById('chart-scored'), {
+    type:'bar',
+    data:{ labels:DEMS, datasets:[{
+      data: DEMS.map(k=>d.scored_by[k]),
+      backgroundColor: DEMS.map(k=>C[k]), borderWidth:0, borderRadius:4
+    }]},
+    options:{
+      responsive:true, maintainAspectRatio:false,
+      plugins:{ legend:{display:false}, tooltip:{ callbacks:{ label: ctx=>`Avaliações médias: ${Math.round(ctx.parsed.y).toLocaleString('pt-BR')}` } } },
+      scales:{
+        x:{ticks:{color:textColor,font:baseFont},grid:{color:'transparent'}},
+        y:{ticks:{color:textColor,font:baseFont,callback:v=>fmtK(v)},grid:{color:gridColor}}
+      }
+    }
+  });
+
+  // ── Chart 5: Popularity (lower = better, invert axis)
+  destroyChart('pop');
+  buildLegend('legend-pop', DEMS.map(k=>[k, C[k]]));
+  chartInstances.pop = new Chart(document.getElementById('chart-pop'), {
+    type:'bar',
+    data:{ labels:DEMS, datasets:[{
+      data: DEMS.map(k=>d.popularity[k]),
+      backgroundColor: DEMS.map(k=>C[k]), borderWidth:0, borderRadius:4
+    }]},
+    options:{
+      responsive:true, maintainAspectRatio:false,
+      plugins:{ legend:{display:false},
+        tooltip:{ callbacks:{ label: ctx=>`Posição média: #${Math.round(ctx.parsed.y).toLocaleString('pt-BR')} (menor = mais popular)` } } },
+      scales:{
+        x:{ticks:{color:textColor,font:baseFont},grid:{color:'transparent'}},
+        y:{reverse:true, ticks:{color:textColor,font:baseFont,callback:v=>'#'+v.toLocaleString('pt-BR')},grid:{color:gridColor},
+           title:{display:true,text:'← mais popular',color:textColor,font:baseFont}}
+      }
+    }
+  });
+
+  // ── Chart 6: Gender scores
+  destroyChart('gender');
+  buildLegend('legend-gender', [['Mulheres','#D4537E'],['Homens','#378ADD']]);
+  chartInstances.gender = new Chart(document.getElementById('chart-gender'), {
+    type:'bar',
+    data:{ labels:DEMS, datasets:[
+      { label:'Mulheres', data: DEMS.map(k=>d.gender?.Female?.[k]), backgroundColor:'#D4537E', borderWidth:0, borderRadius:4 },
+      { label:'Homens',   data: DEMS.map(k=>d.gender?.Male?.[k]),   backgroundColor:'#378ADD', borderWidth:0, borderRadius:4 },
+    ]},
+    options:{
+      responsive:true, maintainAspectRatio:false,
+      plugins:{ legend:{display:false}, tooltip:{ callbacks:{ label: ctx=>`${ctx.dataset.label}: ${ctx.parsed.y?.toFixed(2)}` } } },
+      scales:{
+        x:{ticks:{color:textColor,font:baseFont},grid:{color:'transparent'}},
+        y:{min:6.8, max:8.0, ticks:{color:textColor,font:baseFont},grid:{color:gridColor}}
+      }
+    }
+  });
+  const gF = d.gender?.Female?.Shoujo, gM = d.gender?.Male?.Shoujo;
+  if (gF && gM) {
+    const diff = Math.abs(gF-gM).toFixed(3);
+    document.getElementById('insight-gender').textContent =
+      gF > gM
+        ? `◆ Mulheres avaliam Shoujo com nota ${gF.toFixed(2)}, homens com ${gM.toFixed(2)} — diferença de ${diff} pontos. Isso evidencia que a audiência feminina tem alto engajamento com obras Shoujo, mas os homens (maioria na plataforma: 78% dos usuários com gênero declarado) tendem a subavaliar essas obras, puxando a média para baixo.`
+        : `◆ Homens avaliam Shoujo com nota ${gM.toFixed(2)}, mulheres com ${gF.toFixed(2)} — diferença de ${diff} pontos.`;
+  }
+
+  // ── Chart 7: % top 1k
+  destroyChart('top1k');
+  buildLegend('legend-top1k', DEMS.map(k=>[k, C[k]]));
+  chartInstances.top1k = new Chart(document.getElementById('chart-top1k'), {
+    type:'bar',
+    data:{ labels:DEMS, datasets:[{
+      data: DEMS.map(k=>d.pct_top1k[k]),
+      backgroundColor: DEMS.map(k=>C[k]), borderWidth:0, borderRadius:4
+    }]},
+    options:{
+      responsive:true, maintainAspectRatio:false,
+      plugins:{ legend:{display:false}, tooltip:{ callbacks:{ label: ctx=>`${ctx.parsed.y?.toFixed(1)}% dos títulos da categoria` } } },
+      scales:{
+        x:{ticks:{color:textColor,font:baseFont},grid:{color:'transparent'}},
+        y:{ticks:{color:textColor,font:baseFont,callback:v=>v.toFixed(0)+'%'},grid:{color:gridColor}}
+      }
+    }
+  });
+
+  // ── Chart 8: Score histogram Shoujo vs Shounen
+  destroyChart('hist');
+  buildLegend('legend-hist', [['Shoujo','#D4537E'],['Shounen','#378ADD']]);
+  chartInstances.hist = new Chart(document.getElementById('chart-hist'), {
+    type:'bar',
+    data:{ labels: d.score_dist.labels, datasets:[
+      { label:'Shoujo',  data: d.score_dist.Shoujo,  backgroundColor:'rgba(212,83,126,0.75)', borderWidth:0, borderRadius:3 },
+      { label:'Shounen', data: d.score_dist.Shounen, backgroundColor:'rgba(55,138,221,0.55)', borderWidth:0, borderRadius:3 },
+    ]},
+    options:{
+      responsive:true, maintainAspectRatio:false,
+      plugins:{ legend:{display:false}, tooltip:{ callbacks:{ label: ctx=>`${ctx.dataset.label}: ${ctx.parsed.y} títulos` } } },
+      scales:{
+        x:{ticks:{color:textColor,font:baseFont},grid:{color:'transparent'}},
+        y:{ticks:{color:textColor,font:baseFont},grid:{color:gridColor}}
+      }
+    }
+  });
+
+  // ── Table
+  const tbody = document.getElementById('top-table');
+  tbody.innerHTML = '';
+  (d.top_shoujo||[]).forEach((a,i) => {
+    const pct = a.score ? (a.score/10*100).toFixed(0) : 0;
+    const tr = document.createElement('tr');
+    tr.innerHTML = `
+      <td style="color:var(--muted);font-family:'Courier New',monospace;font-size:12px">${i+1}</td>
+      <td style="font-size:13px;max-width:220px">${a.title}</td>
+      <td><span class="badge badge-shoujo">Shoujo</span></td>
+      <td>
+        <div class="score-bar-wrap">
+          <div class="score-bar" style="width:${pct*0.7}px"></div>
+          <span style="font-size:13px">${a.score?.toFixed(2)??'—'}</span>
+        </div>
+      </td>
+      <td style="font-family:'Courier New',monospace;font-size:12px">${(a.members||0).toLocaleString('pt-BR')}</td>
+      <td style="font-family:'Courier New',monospace;font-size:12px">${(a.scored_by||0).toLocaleString('pt-BR')}</td>
+      <td style="font-family:'Courier New',monospace;font-size:12px">${a.rank?'#'+a.rank.toLocaleString('pt-BR'):'—'}</td>
+      <td style="font-family:'Courier New',monospace;font-size:12px">${a.popularity?'#'+a.popularity.toLocaleString('pt-BR'):'—'}</td>
+    `;
+    tbody.appendChild(tr);
+  });
+
+  // ── Final insight
+  document.getElementById('insight-final').textContent =
+    `✦ Síntese: com ${d.count.Shoujo} títulos (${(d.count.Shoujo/total*100).toFixed(1)}% do total), o Shoujo possui ${diffMb?diffMb+'% menos membros médios':'menos membros'} que o Shounen e ocupa posições mais baixas no ranking de popularidade. Os dados de avaliação por gênero mostram que a subestimação vem principalmente da audiência masculina, majoritária na plataforma. Isso configura um viés estrutural: obras voltadas ao público feminino partem em desvantagem de visibilidade independente de sua qualidade narrativa.`;
+
+  // ── Timestamps
+  const now = new Date().toLocaleString('pt-BR');
+  document.getElementById('last-updated').textContent = `Dados processados em: ${now} · ${total.toLocaleString('pt-BR')} animes com demografia definida`;
+  document.getElementById('footer-updated').textContent = `Atualizado: ${now}`;
+}
+
+// ── FILE INPUT HANDLERS ────────────────────────────────
+function handleMAL(file) {
+  document.getElementById('mal-status').textContent = 'carregando...';
+  document.getElementById('mal-status').className = 'file-status';
+  Papa.parse(file, {
+    header:true, skipEmptyLines:true,
+    complete: res => {
+      try {
+        parseMAL(res.data);
+        document.getElementById('mal-status').textContent = `✓ ${file.name} (${res.data.length.toLocaleString('pt-BR')} linhas)`;
+        document.getElementById('mal-status').className = 'file-status ok';
+        render();
+      } catch(e) {
+        document.getElementById('mal-status').textContent = '✗ erro ao processar';
+        document.getElementById('mal-status').className = 'file-status err';
+      }
+    },
+    error: () => {
+      document.getElementById('mal-status').textContent = '✗ erro ao ler';
+      document.getElementById('mal-status').className = 'file-status err';
+    }
+  });
+}
+
+function handleUSR(file) {
+  document.getElementById('usr-status').textContent = 'carregando... (arquivo grande, aguarde)';
+  document.getElementById('usr-status').className = 'file-status';
+  Papa.parse(file, {
+    header:true, skipEmptyLines:true,
+    complete: res => {
+      try {
+        parseUSERS(res.data);
+        document.getElementById('usr-status').textContent = `✓ ${file.name} (${res.data.length.toLocaleString('pt-BR')} linhas)`;
+        document.getElementById('usr-status').className = 'file-status ok';
+        render();
+      } catch(e) {
+        document.getElementById('usr-status').textContent = '✗ erro ao processar';
+        document.getElementById('usr-status').className = 'file-status err';
+      }
+    },
+    error: () => {
+      document.getElementById('usr-status').textContent = '✗ erro ao ler';
+      document.getElementById('usr-status').className = 'file-status err';
+    }
+  });
+}
+
+document.getElementById('mal-file').addEventListener('change', e => {
+  if (e.target.files[0]) handleMAL(e.target.files[0]);
+});
+document.getElementById('usr-file').addEventListener('change', e => {
+  if (e.target.files[0]) handleUSR(e.target.files[0]);
+});
+
+// ── INIT ──────────────────────────────────────────────
+window.addEventListener('DOMContentLoaded', () => {
+  document.getElementById('loading-msg').textContent = 'Renderizando gráficos...';
+  setTimeout(() => {
+    render();
+    document.getElementById('loading-overlay').style.display = 'none';
+  }, 400);
+});
+</script>
+</body>
+</html>

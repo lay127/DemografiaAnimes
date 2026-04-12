@@ -1,0 +1,491 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Perfil do Espectador de Anime por Gênero — Análise Shoujo</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
+<style>
+  :root {
+    --pink:#D4537E;--blue:#378ADD;--purple:#7F77DD;--teal:#1D9E75;
+    --gray:#888780;--amber:#BA7517;--bg:#F8F7F4;--surface:#FFFFFF;
+    --border:rgba(0,0,0,0.08);--text:#1A1A18;--muted:#6B6A66;--light:#E8E6E0;
+    --pink-light:#FBEAF0;--blue-light:#E6F1FB;--teal-light:#E1F5EE;--amber-light:#FAEEDA;
+  }
+  *{box-sizing:border-box;margin:0;padding:0;}
+  body{font-family:'Georgia',serif;background:var(--bg);color:var(--text);min-height:100vh;}
+  .masthead{background:var(--text);color:#F8F7F4;padding:2.5rem 3rem 2rem;position:relative;overflow:hidden;}
+  .masthead::before{content:'';position:absolute;top:-40px;right:-40px;width:220px;height:220px;border-radius:50%;border:1px solid rgba(255,255,255,0.07);}
+  .masthead::after{content:'';position:absolute;top:20px;right:60px;width:120px;height:120px;border-radius:50%;border:1px solid rgba(255,255,255,0.05);}
+  .masthead-eyebrow{font-family:'Courier New',monospace;font-size:11px;letter-spacing:0.15em;text-transform:uppercase;color:var(--pink);margin-bottom:0.75rem;}
+  .masthead h1{font-size:24px;font-weight:normal;line-height:1.3;margin-bottom:0.5rem;max-width:800px;}
+  .masthead p{font-size:13px;color:rgba(248,247,244,0.5);font-family:'Courier New',monospace;}
+  .upload-section{background:var(--surface);border-bottom:1px solid var(--border);padding:1.25rem 3rem;display:flex;align-items:center;gap:2rem;flex-wrap:wrap;}
+  .upload-label{font-size:12px;font-family:'Courier New',monospace;color:var(--muted);text-transform:uppercase;letter-spacing:0.08em;}
+  .upload-group{display:flex;align-items:center;gap:0.75rem;}
+  .upload-btn{font-family:'Courier New',monospace;font-size:12px;padding:6px 14px;border:1px solid var(--border);background:var(--bg);color:var(--text);cursor:pointer;border-radius:4px;transition:background 0.15s;}
+  .upload-btn:hover{background:var(--light);}
+  .file-status{font-size:12px;font-family:'Courier New',monospace;color:var(--muted);}
+  .file-status.ok{color:var(--teal);} .file-status.err{color:var(--pink);}
+  .main{max-width:1200px;margin:0 auto;padding:2.5rem 3rem 4rem;}
+  .section-eyebrow{font-family:'Courier New',monospace;font-size:10px;letter-spacing:0.18em;text-transform:uppercase;color:var(--muted);margin-bottom:1rem;padding-bottom:0.5rem;border-bottom:1px solid var(--border);}
+  .kpi-strip{display:grid;grid-template-columns:repeat(4,1fr);gap:1px;background:var(--border);border:1px solid var(--border);border-radius:8px;overflow:hidden;margin-bottom:2.5rem;}
+  .kpi{background:var(--surface);padding:1.5rem 1.25rem;}
+  .kpi-label{font-family:'Courier New',monospace;font-size:10px;text-transform:uppercase;letter-spacing:0.1em;color:var(--muted);margin-bottom:0.5rem;}
+  .kpi-value{font-size:30px;font-weight:normal;color:var(--text);line-height:1;margin-bottom:0.4rem;}
+  .kpi-value.alert{color:var(--pink);} .kpi-value.amber{color:var(--amber);}
+  .kpi-sub{font-family:'Courier New',monospace;font-size:11px;color:var(--muted);}
+  .charts-grid{display:grid;grid-template-columns:1fr 1fr;gap:1.5rem;margin-bottom:1.5rem;}
+  .chart-card{background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:1.5rem;}
+  .chart-card.wide{grid-column:1/-1;}
+  .chart-title{font-size:15px;font-weight:normal;color:var(--text);margin-bottom:4px;}
+  .chart-desc{font-family:'Courier New',monospace;font-size:11px;color:var(--muted);margin-bottom:1.25rem;line-height:1.5;}
+  .legend{display:flex;flex-wrap:wrap;gap:12px;margin-bottom:12px;}
+  .legend-item{display:flex;align-items:center;gap:5px;font-family:'Courier New',monospace;font-size:11px;color:var(--muted);}
+  .legend-sq{width:9px;height:9px;border-radius:2px;flex-shrink:0;}
+  .insight{margin-top:1.25rem;padding:0.9rem 1rem;border-left:3px solid var(--pink);background:var(--pink-light);font-size:13px;color:#72243E;line-height:1.6;font-family:'Courier New',monospace;}
+  .insight.amber{background:var(--amber-light);border-color:var(--amber);color:#633806;}
+  .insight.teal{background:var(--teal-light);border-color:var(--teal);color:#085041;}
+  .table-wrap{overflow-x:auto;}
+  table{width:100%;border-collapse:collapse;font-size:13px;}
+  thead th{font-family:'Courier New',monospace;font-size:10px;text-transform:uppercase;letter-spacing:0.08em;color:var(--muted);text-align:left;padding:6px 12px;border-bottom:1px solid var(--border);}
+  tbody td{padding:9px 12px;border-bottom:1px solid var(--light);color:var(--text);vertical-align:middle;}
+  tbody tr:last-child td{border-bottom:none;} tbody tr:hover td{background:var(--bg);}
+  .badge{display:inline-block;font-family:'Courier New',monospace;font-size:10px;padding:2px 8px;border-radius:20px;}
+  .badge-shoujo{background:var(--pink-light);color:#993556;}
+  .badge-shounen{background:var(--blue-light);color:#185FA5;}
+  .badge-seinen{background:#EEEDFE;color:#534AB7;}
+  #loading-overlay{position:fixed;inset:0;background:var(--bg);display:flex;flex-direction:column;align-items:center;justify-content:center;z-index:999;gap:1rem;}
+  .loading-title{font-size:18px;color:var(--text);}
+  .loading-msg{font-family:'Courier New',monospace;font-size:12px;color:var(--muted);}
+  .spinner{width:32px;height:32px;border:2px solid var(--light);border-top-color:var(--pink);border-radius:50%;animation:spin 0.8s linear infinite;}
+  @keyframes spin{to{transform:rotate(360deg);}}
+  .footer{border-top:1px solid var(--border);margin-top:3rem;padding-top:1.5rem;font-family:'Courier New',monospace;font-size:11px;color:var(--muted);display:flex;justify-content:space-between;}
+</style>
+</head>
+<body>
+
+<div id="loading-overlay">
+  <div class="spinner"></div>
+  <div class="loading-title">Carregando dados</div>
+  <div class="loading-msg">Processando dataset de espectadores...</div>
+</div>
+
+<div class="masthead">
+  <div class="masthead-eyebrow">Análise de espectadores · Anime Watchers Dataset</div>
+  <h1>Perfil do público por gênero favorito: quem assiste Shoujo, como assiste e o que isso revela sobre a subvalorização estrutural</h1>
+  <p id="last-updated">Carregando...</p>
+</div>
+
+<div class="upload-section">
+  <span class="upload-label">Atualizar dados:</span>
+  <div class="upload-group">
+    <label class="upload-btn" for="csv-file">📂 anime_watchers_dataset.csv</label>
+    <input type="file" id="csv-file" accept=".csv" style="display:none">
+    <span class="file-status" id="csv-status">usando dados embutidos</span>
+  </div>
+</div>
+
+<div class="main">
+
+  <div class="section-eyebrow">Indicadores gerais</div>
+  <div class="kpi-strip">
+    <div class="kpi"><div class="kpi-label">Total de espectadores</div><div class="kpi-value" id="kpi-total">—</div><div class="kpi-sub">no dataset completo</div></div>
+    <div class="kpi"><div class="kpi-label">Fãs de Shoujo</div><div class="kpi-value alert" id="kpi-shoujo">—</div><div class="kpi-sub" id="kpi-shoujo-sub">vs Shounen</div></div>
+    <div class="kpi"><div class="kpi-label">Horas/semana Shoujo</div><div class="kpi-value alert" id="kpi-hours">—</div><div class="kpi-sub" id="kpi-hours-sub">vs Shounen</div></div>
+    <div class="kpi"><div class="kpi-label">Gasto médio Shoujo</div><div class="kpi-value amber" id="kpi-merch">—</div><div class="kpi-sub" id="kpi-merch-sub">em merchandise (USD)</div></div>
+  </div>
+
+  <div class="charts-grid">
+
+    <div class="chart-card">
+      <div class="chart-title">Distribuição por gênero favorito</div>
+      <div class="chart-desc">Quantidade de espectadores por gênero de anime preferido</div>
+      <div class="legend" id="legend-dist"></div>
+      <div style="position:relative;height:260px;"><canvas id="chart-dist" role="img" aria-label="Distribuição por gênero favorito"></canvas></div>
+    </div>
+
+    <div class="chart-card">
+      <div class="chart-title">Quem assiste cada demografia</div>
+      <div class="chart-desc">Composição por gênero do espectador — Shounen · Shoujo · Seinen</div>
+      <div class="legend" id="legend-gdist"></div>
+      <div style="position:relative;height:220px;"><canvas id="chart-gdist" role="img" aria-label="Gênero espectador por demographic"></canvas></div>
+      <div class="insight" id="insight-gdist"></div>
+    </div>
+
+    <div class="chart-card wide">
+      <div class="chart-title">Horas semanais por gênero favorito × gênero do espectador</div>
+      <div class="chart-desc">Intensidade de consumo semanal — revela dedicação do público independente do volume de conteúdo disponível</div>
+      <div class="legend" id="legend-hours"></div>
+      <div style="position:relative;height:220px;"><canvas id="chart-hours" role="img" aria-label="Horas semanais"></canvas></div>
+      <div class="insight amber" id="insight-hours"></div>
+    </div>
+
+    <div class="chart-card">
+      <div class="chart-title">Gasto médio em merchandise (USD)</div>
+      <div class="chart-desc">Valor econômico gerado pelo público de cada gênero — indicador de mercado subestimado</div>
+      <div class="legend" id="legend-merch"></div>
+      <div style="position:relative;height:220px;"><canvas id="chart-merch" role="img" aria-label="Merchandise por demographic"></canvas></div>
+    </div>
+
+    <div class="chart-card">
+      <div class="chart-title">Nível de engajamento por gênero favorito</div>
+      <div class="chart-desc">Proporção de espectadores com engajamento Alto, Médio e Baixo (empilhado 100%)</div>
+      <div class="legend" id="legend-eng"></div>
+      <div style="position:relative;height:220px;"><canvas id="chart-eng" role="img" aria-label="Engajamento por demographic"></canvas></div>
+      <div class="insight" id="insight-eng"></div>
+    </div>
+
+    <div class="chart-card wide">
+      <div class="chart-title">Preferência de era × gênero favorito</div>
+      <div class="chart-desc">Era preferida pelos fãs — Clássica (pré-1990) · Dourada (1990–2009) · Moderna (2010+). Achado crítico: o Shoujo não renova seu público na era atual</div>
+      <div class="legend" id="legend-era"></div>
+      <div style="position:relative;height:220px;"><canvas id="chart-era" role="img" aria-label="Era preferida por demographic"></canvas></div>
+      <div class="insight" id="insight-era"></div>
+    </div>
+
+    <div class="chart-card wide">
+      <div class="chart-title">Plataforma de consumo — Shoujo vs Shounen</div>
+      <div class="chart-desc">Como cada público acessa o conteúdo — presença ou ausência em plataformas de streaming revela barreiras estruturais de distribuição</div>
+      <div class="legend" id="legend-plat"></div>
+      <div style="position:relative;height:260px;"><canvas id="chart-plat" role="img" aria-label="Plataforma Shoujo vs Shounen"></canvas></div>
+      <div class="insight amber" id="insight-plat"></div>
+    </div>
+
+    <div class="chart-card">
+      <div class="chart-title">Participação em comunidades online</div>
+      <div class="chart-desc">Onde fãs de Shoujo e Shounen se engajam — visibilidade no debate público</div>
+      <div class="legend" id="legend-comm"></div>
+      <div style="position:relative;height:220px;"><canvas id="chart-comm" role="img" aria-label="Comunidades"></canvas></div>
+    </div>
+
+    <div class="chart-card">
+      <div class="chart-title">Dispositivo de consumo</div>
+      <div class="chart-desc">Como Shoujo e Shounen são assistidos — TV vs telas digitais pessoais</div>
+      <div class="legend" id="legend-dev"></div>
+      <div style="position:relative;height:220px;"><canvas id="chart-dev" role="img" aria-label="Dispositivo"></canvas></div>
+    </div>
+
+    <div class="chart-card wide">
+      <div class="chart-title">Idade média do espectador por gênero favorito × gênero</div>
+      <div class="chart-desc">Perfil etário — fãs de Shoujo são sistematicamente mais velhos, reflexo da ruptura na produção após 2009</div>
+      <div class="legend" id="legend-age"></div>
+      <div style="position:relative;height:220px;"><canvas id="chart-age" role="img" aria-label="Idade média"></canvas></div>
+      <div class="insight teal" id="insight-age"></div>
+    </div>
+
+    <div class="chart-card wide">
+      <div class="chart-title">Gasto em merchandise por gênero do espectador × demografia favorita</div>
+      <div class="chart-desc">Desagregação econômica por identidade — o público feminino de Shoujo tem capacidade de consumo, mas encontra menor oferta de produtos</div>
+      <div class="legend" id="legend-merch-g"></div>
+      <div style="position:relative;height:220px;"><canvas id="chart-merch-g" role="img" aria-label="Merchandise por gênero espectador"></canvas></div>
+      <div class="insight" id="insight-merch-g"></div>
+    </div>
+
+  </div>
+
+  <div class="section-eyebrow" style="margin-top:0.5rem;">Resumo comparativo — indicadores quantitativos</div>
+  <div class="chart-card wide" style="margin-bottom:2rem;">
+    <div class="chart-desc" style="margin-bottom:1rem;">Todos os indicadores mensuráveis lado a lado para Shounen, Shoujo e Seinen</div>
+    <div class="table-wrap"><table>
+      <thead><tr><th>Indicador</th><th>Shounen</th><th>Shoujo</th><th>Seinen</th><th>Shoujo vs Shounen</th></tr></thead>
+      <tbody id="summary-table"></tbody>
+    </table></div>
+  </div>
+
+  <div class="insight teal" id="insight-final"></div>
+
+  <div class="footer">
+    <span>Fonte: Anime Watchers Dataset · 10.000 espectadores</span>
+    <span id="footer-updated"></span>
+  </div>
+</div>
+
+<script>
+const gColors=['#D4537E','#378ADD','#888780'];
+const genders=['Female','Male','Other'];
+const gLabels=['Mulheres','Homens','Outro'];
+const gridC='rgba(0,0,0,0.06)';
+const textC='#6B6A66';
+const bf={family:"'Courier New',monospace",size:11};
+const charts={};
+function dc(id){if(charts[id]){charts[id].destroy();delete charts[id];}}
+function leg(id,items){document.getElementById(id).innerHTML=items.map(([l,c])=>`<span class="legend-item"><span class="legend-sq" style="background:${c}"></span>${l}</span>`).join('');}
+
+const BUILTIN={
+  count:{Shounen:2753,Isekai:1709,Fantasy:1035,Seinen:1029,'Slice of Life':808,Romance:604,Shoujo:584,Sports:580,Comedy:547,Horror:197,Mecha:154},
+  gender_by_genre:{Female:{Shounen:1306,Shoujo:268,Seinen:518},Male:{Shounen:1340,Shoujo:291,Seinen:473},Other:{Shounen:107,Shoujo:25,Seinen:38}},
+  watch_hours_gender:{Female:{Shounen:15.63,Shoujo:11.96,Seinen:14.91},Male:{Shounen:15.91,Shoujo:12.04,Seinen:14.41},Other:{Shounen:15.08,Shoujo:11.96,Seinen:15.11}},
+  watch_hours:{Shounen:15.74,Shoujo:12.0,Seinen:14.69},
+  merch:{Shounen:1566.69,Shoujo:1100.51,Seinen:1452.07},
+  merch_gender:{Female:{Shounen:1558.42,Shoujo:1151.41,Seinen:1448.84},Male:{Shounen:1603.41,Shoujo:1075.76,Seinen:1460.88},Other:{Shounen:1207.64,Shoujo:843.0,Seinen:1386.4}},
+  engagement:{High:{Shounen:1619,Shoujo:225,Seinen:565},Medium:{Shounen:895,Shoujo:260,Seinen:351},Low:{Shounen:239,Shoujo:99,Seinen:113}},
+  platform:{TV:{Shounen:485,Shoujo:214},YouTube:{Shounen:520,Shoujo:144},'VHS/DVD':{Shounen:298,Shoujo:152},DVD:{Shounen:123,Shoujo:74},Crunchyroll:{Shounen:292,Shoujo:0},Funimation:{Shounen:268,Shoujo:0},Hulu:{Shounen:262,Shoujo:0},'Amazon Prime':{Shounen:244,Shoujo:0},Netflix:{Shounen:261,Shoujo:0}},
+  community:{Reddit:{Shounen:761,Shoujo:146},Discord:{Shounen:630,Shoujo:54},MyAnimeList:{Shounen:451,Shoujo:140},'Cosplay Events':{Shounen:212,Shoujo:48}},
+  era:{'Classic Era':{Shounen:114,Shoujo:21,Seinen:83},'Golden Era':{Shounen:1045,Shoujo:563,Seinen:452},'Modern Era':{Shounen:1594,Shoujo:0,Seinen:494}},
+  age_gender:{Female:{Shounen:41.2,Shoujo:45.7,Seinen:41.3},Male:{Shounen:40.9,Shoujo:44.5,Seinen:41.5},Other:{Shounen:42.0,Shoujo:44.4,Seinen:43.0}},
+  device:{TV:{Shounen:990,Shoujo:344},PC:{Shounen:718,Shoujo:109},Smartphone:{Shounen:732,Shoujo:75},Console:{Shounen:147,Shoujo:52},Tablet:{Shounen:166,Shoujo:4}},
+  manga_pct:{Shounen:54.8,Shoujo:53.9,Seinen:55.8},
+};
+let DATA=JSON.parse(JSON.stringify(BUILTIN));
+
+function parseCSV(rows){
+  const DEMS=['Shounen','Shoujo','Seinen'];
+  const count={},gbg={Female:{},Male:{},Other:{}},
+        whg={Female:{},Male:{},Other:{}},wh={},
+        merch={},mg={Female:{},Male:{},Other:{}},
+        eng={High:{},Medium:{},Low:{}},
+        plat={},comm={},era={},
+        agg={Female:{},Male:{},Other:{}},dev={},
+        manY={},manN={};
+  DEMS.forEach(d=>{
+    count[d]=0;wh[d]={s:0,c:0};merch[d]={s:0,c:0};manY[d]=0;manN[d]=0;
+    genders.forEach(g=>{gbg[g][d]=0;whg[g][d]={s:0,c:0};mg[g][d]={s:0,c:0};agg[g][d]={s:0,c:0};});
+    ['High','Medium','Low'].forEach(e=>{eng[e][d]=0;});
+  });
+  const allCount={};
+  for(const r of rows){
+    let genre=(r['Favorite_Anime_Genre']||'').trim();
+    if(genre==='Shojo')genre='Shoujo';
+    allCount[genre]=(allCount[genre]||0)+1;
+    if(!DEMS.includes(genre))continue;
+    const g=(r['Gender']||'').trim();
+    const gk=genders.includes(g)?g:'Other';
+    const h=parseFloat(r['Average_Weekly_Watch_Hours'])||0;
+    const ms=parseFloat(r['Merchandise_Spending_USD'])||0;
+    const age=parseFloat(r['Age'])||0;
+    const el=(r['Engagement_Level']||'').trim();
+    const pp=(r['Primary_Platform']||'').trim();
+    const cp=(r['Community_Participation']||'').trim();
+    const ev=(r['Anime_Era_Preference']||'').trim();
+    const dv=(r['Device_Used_for_Watching']||'').trim();
+    const mn=(r['Is_Manga_Reader']||'').trim();
+    count[genre]++;
+    gbg[gk][genre]++;
+    if(h){whg[gk][genre].s+=h;whg[gk][genre].c++;wh[genre].s+=h;wh[genre].c++;}
+    if(ms){mg[gk][genre].s+=ms;mg[gk][genre].c++;merch[genre].s+=ms;merch[genre].c++;}
+    if(age){agg[gk][genre].s+=age;agg[gk][genre].c++;}
+    if(['High','Medium','Low'].includes(el))eng[el][genre]++;
+    if(pp){if(!plat[pp])plat[pp]={Shounen:0,Shoujo:0};if(plat[pp][genre]!==undefined)plat[pp][genre]++;}
+    if(cp){if(!comm[cp])comm[cp]={Shounen:0,Shoujo:0};if(comm[cp][genre]!==undefined)comm[cp][genre]++;}
+    if(ev){if(!era[ev])era[ev]={Shounen:0,Shoujo:0,Seinen:0};era[ev][genre]++;}
+    if(dv){if(!dev[dv])dev[dv]={Shounen:0,Shoujo:0};if(dev[dv][genre]!==undefined)dev[dv][genre]++;}
+    if(mn==='Yes')manY[genre]++;else manN[genre]++;
+  }
+  DATA.count=allCount;
+  DATA.gender_by_genre=gbg;
+  DATA.watch_hours_gender=Object.fromEntries(genders.map(g=>[g,Object.fromEntries(DEMS.map(d=>[d,whg[g][d].c?+(whg[g][d].s/whg[g][d].c).toFixed(2):null]))]));
+  DATA.watch_hours=Object.fromEntries(DEMS.map(d=>[d,wh[d].c?+(wh[d].s/wh[d].c).toFixed(2):null]));
+  DATA.merch=Object.fromEntries(DEMS.map(d=>[d,merch[d].c?+(merch[d].s/merch[d].c).toFixed(2):null]));
+  DATA.merch_gender=Object.fromEntries(genders.map(g=>[g,Object.fromEntries(DEMS.map(d=>[d,mg[g][d].c?+(mg[g][d].s/mg[g][d].c).toFixed(2):null]))]));
+  DATA.engagement=eng;DATA.platform=plat;DATA.community=comm;DATA.era=era;
+  DATA.age_gender=Object.fromEntries(genders.map(g=>[g,Object.fromEntries(DEMS.map(d=>[d,agg[g][d].c?+(agg[g][d].s/agg[g][d].c).toFixed(1):null]))]));
+  DATA.device=dev;
+  DATA.manga_pct=Object.fromEntries(DEMS.map(d=>[d,manY[d]||(manN[d])?+(manY[d]/(manY[d]+manN[d])*100).toFixed(1):null]));
+}
+
+function render(){
+  const D=DATA;
+  const total=Object.values(D.count).reduce((a,b)=>a+b,0);
+  const sj=D.count.Shoujo||0,sn=D.count.Shounen||0;
+
+  document.getElementById('kpi-total').textContent=total.toLocaleString('pt-BR');
+  document.getElementById('kpi-shoujo').textContent=sj.toLocaleString('pt-BR');
+  document.getElementById('kpi-shoujo-sub').textContent=`${(sj/total*100).toFixed(1)}% do total — Shounen: ${(sn/total*100).toFixed(1)}%`;
+  document.getElementById('kpi-hours').textContent=(D.watch_hours.Shoujo||0).toFixed(1)+'h';
+  document.getElementById('kpi-hours-sub').textContent=`Shounen: ${(D.watch_hours.Shounen||0).toFixed(1)}h/semana`;
+  document.getElementById('kpi-merch').textContent='$'+(D.merch.Shoujo||0).toLocaleString('pt-BR',{maximumFractionDigits:0});
+  document.getElementById('kpi-merch-sub').textContent=`Shounen: $${(D.merch.Shounen||0).toLocaleString('pt-BR',{maximumFractionDigits:0})}`;
+
+  // 1. Dist horizontal bar
+  dc('dist');
+  const de=Object.entries(D.count).sort((a,b)=>b[1]-a[1]);
+  const cmap={Shounen:'#378ADD',Shoujo:'#D4537E',Seinen:'#7F77DD'};
+  leg('legend-dist',[['Shounen','#378ADD'],['Shoujo','#D4537E'],['Seinen','#7F77DD'],['Outros','#888780']]);
+  charts.dist=new Chart(document.getElementById('chart-dist'),{type:'bar',
+    data:{labels:de.map(([k])=>k),datasets:[{data:de.map(([,v])=>v),backgroundColor:de.map(([k])=>cmap[k]||'#888780'),borderWidth:0,borderRadius:4}]},
+    options:{indexAxis:'y',responsive:true,maintainAspectRatio:false,
+      plugins:{legend:{display:false},tooltip:{callbacks:{label:ctx=>`${ctx.parsed.x.toLocaleString('pt-BR')} espectadores`}}},
+      scales:{x:{ticks:{color:textC,font:bf},grid:{color:gridC}},y:{ticks:{color:textC,font:bf},grid:{color:'transparent'}}}}
+  });
+
+  // 2. Gênero espectador por demographic
+  dc('gdist');
+  leg('legend-gdist',gLabels.map((l,i)=>[l,gColors[i]]));
+  charts.gdist=new Chart(document.getElementById('chart-gdist'),{type:'bar',
+    data:{labels:['Shounen','Shoujo','Seinen'],datasets:genders.map((g,i)=>({label:gLabels[i],data:['Shounen','Shoujo','Seinen'].map(d=>D.gender_by_genre[g]?.[d]||0),backgroundColor:gColors[i],borderWidth:0,borderRadius:3}))},
+    options:{responsive:true,maintainAspectRatio:false,
+      plugins:{legend:{display:false},tooltip:{callbacks:{label:ctx=>`${ctx.dataset.label}: ${ctx.parsed.y.toLocaleString('pt-BR')}`}}},
+      scales:{x:{ticks:{color:textC,font:bf},grid:{color:'transparent'}},y:{ticks:{color:textC,font:bf},grid:{color:gridC}}}}
+  });
+  const sjF=D.gender_by_genre.Female?.Shoujo||0,sjM=D.gender_by_genre.Male?.Shoujo||0,sjT=sj||1;
+  document.getElementById('insight-gdist').textContent=`◆ Entre os ${sjT.toLocaleString('pt-BR')} fãs de Shoujo: ${(sjF/sjT*100).toFixed(0)}% mulheres e ${(sjM/sjT*100).toFixed(0)}% homens — distribuição de gênero mais equilibrada do que se poderia supor. O baixo número absoluto reflete a menor representatividade do Shoujo no catálogo, não a ausência de interesse.`;
+
+  // 3. Horas por gênero
+  dc('hours');
+  leg('legend-hours',gLabels.map((l,i)=>[l,gColors[i]]));
+  charts.hours=new Chart(document.getElementById('chart-hours'),{type:'bar',
+    data:{labels:['Shounen','Shoujo','Seinen'],datasets:genders.map((g,i)=>({label:gLabels[i],data:['Shounen','Shoujo','Seinen'].map(d=>D.watch_hours_gender[g]?.[d]||0),backgroundColor:gColors[i],borderWidth:0,borderRadius:3}))},
+    options:{responsive:true,maintainAspectRatio:false,
+      plugins:{legend:{display:false},tooltip:{callbacks:{label:ctx=>`${ctx.dataset.label}: ${ctx.parsed.y?.toFixed(1)}h/semana`}}},
+      scales:{x:{ticks:{color:textC,font:bf},grid:{color:'transparent'}},y:{min:8,ticks:{color:textC,font:bf,callback:v=>v+'h'},grid:{color:gridC}}}}
+  });
+  const diffH=D.watch_hours.Shounen&&D.watch_hours.Shoujo?(D.watch_hours.Shounen-D.watch_hours.Shoujo).toFixed(1):null;
+  document.getElementById('insight-hours').textContent=diffH?`⚠ Fãs de Shoujo assistem ${D.watch_hours.Shoujo}h/semana — ${diffH}h a menos que fãs de Shounen (${D.watch_hours.Shounen}h). Essa diferença provavelmente reflete a menor oferta de títulos ativos, não o desinteresse do público: com menos séries em exibição, há menos conteúdo para consumir continuamente.`:'';
+
+  // 4. Merch por demographic
+  dc('merch');
+  leg('legend-merch',[['Shounen','#378ADD'],['Shoujo','#D4537E'],['Seinen','#7F77DD']]);
+  charts.merch=new Chart(document.getElementById('chart-merch'),{type:'bar',
+    data:{labels:['Shounen','Shoujo','Seinen'],datasets:[{data:['Shounen','Shoujo','Seinen'].map(d=>D.merch[d]||0),backgroundColor:['#378ADD','#D4537E','#7F77DD'],borderWidth:0,borderRadius:4}]},
+    options:{responsive:true,maintainAspectRatio:false,
+      plugins:{legend:{display:false},tooltip:{callbacks:{label:ctx=>`USD ${ctx.parsed.y?.toFixed(2)}`}}},
+      scales:{x:{ticks:{color:textC,font:bf},grid:{color:'transparent'}},y:{ticks:{color:textC,font:bf,callback:v=>'$'+v.toLocaleString('pt-BR')},grid:{color:gridC}}}}
+  });
+
+  // 5. Engajamento stacked 100%
+  dc('eng');
+  leg('legend-eng',[['Alto','#1D9E75'],['Médio','#BA7517'],['Baixo','#E24B4A']]);
+  const edems=['Shounen','Shoujo','Seinen'];
+  const etots=edems.map(d=>(D.engagement.High[d]||0)+(D.engagement.Medium[d]||0)+(D.engagement.Low[d]||0));
+  charts.eng=new Chart(document.getElementById('chart-eng'),{type:'bar',
+    data:{labels:edems,datasets:[
+      {label:'Alto',data:edems.map((d,i)=>etots[i]?+((D.engagement.High[d]||0)/etots[i]*100).toFixed(1):0),backgroundColor:'#1D9E75',borderWidth:0},
+      {label:'Médio',data:edems.map((d,i)=>etots[i]?+((D.engagement.Medium[d]||0)/etots[i]*100).toFixed(1):0),backgroundColor:'#BA7517',borderWidth:0},
+      {label:'Baixo',data:edems.map((d,i)=>etots[i]?+((D.engagement.Low[d]||0)/etots[i]*100).toFixed(1):0),backgroundColor:'#E24B4A',borderWidth:0},
+    ]},
+    options:{responsive:true,maintainAspectRatio:false,
+      plugins:{legend:{display:false},tooltip:{callbacks:{label:ctx=>`${ctx.dataset.label}: ${ctx.parsed.y?.toFixed(1)}%`}}},
+      scales:{x:{stacked:true,ticks:{color:textC,font:bf},grid:{color:'transparent'}},y:{stacked:true,max:100,ticks:{color:textC,font:bf,callback:v=>v+'%'},grid:{color:gridC}}}}
+  });
+  const hSJ=D.engagement.High.Shoujo||0,tSJ=etots[1]||1;
+  const hSN=D.engagement.High.Shounen||0,tSN=etots[0]||1;
+  document.getElementById('insight-eng').textContent=`◆ Engajamento alto: Shounen ${(hSN/tSN*100).toFixed(0)}% vs Shoujo ${(hSJ/tSJ*100).toFixed(0)}% — o público Shoujo tem proporcionalmente mais espectadores de engajamento médio. Com menos obras ativas para consumir, é difícil sustentar o padrão de alta dedicação que caracteriza fandoms com lançamentos contínuos.`;
+
+  // 6. Era
+  dc('era');
+  const eras=['Classic Era','Golden Era','Modern Era'];
+  const elab={'Classic Era':'Clássica','Golden Era':'Dourada','Modern Era':'Moderna'};
+  const ecol={'Classic Era':'#888780','Golden Era':'#BA7517','Modern Era':'#1D9E75'};
+  leg('legend-era',eras.map(e=>[elab[e],ecol[e]]));
+  charts.era=new Chart(document.getElementById('chart-era'),{type:'bar',
+    data:{labels:['Shounen','Shoujo','Seinen'],datasets:eras.map(e=>({label:elab[e],data:['Shounen','Shoujo','Seinen'].map(d=>D.era[e]?.[d]||0),backgroundColor:ecol[e],borderWidth:0}))},
+    options:{responsive:true,maintainAspectRatio:false,
+      plugins:{legend:{display:false},tooltip:{callbacks:{label:ctx=>`${ctx.dataset.label}: ${ctx.parsed.y.toLocaleString('pt-BR')} espectadores`}}},
+      scales:{x:{stacked:true,ticks:{color:textC,font:bf},grid:{color:'transparent'}},y:{stacked:true,ticks:{color:textC,font:bf},grid:{color:gridC}}}}
+  });
+  const modSJ=D.era['Modern Era']?.Shoujo||0;
+  document.getElementById('insight-era').textContent=`⚠ Achado crítico: ${modSJ===0?'nenhum espectador':'pouquíssimos espectadores'} com Shoujo como favorito prefere a era Moderna — todos os fãs estão concentrados nas eras Clássica e Dourada (pré-2010). Shounen e Seinen continuam atraindo público jovem com produções atuais; o Shoujo ficou para trás na renovação de audiência.`;
+
+  // 7. Plataforma horizontal
+  dc('plat');
+  const pk=Object.keys(D.platform).filter(p=>(D.platform[p].Shounen||0)+(D.platform[p].Shoujo||0)>0).sort((a,b)=>(D.platform[b].Shounen||0)-(D.platform[a].Shounen||0));
+  leg('legend-plat',[['Shounen','#378ADD'],['Shoujo','#D4537E']]);
+  charts.plat=new Chart(document.getElementById('chart-plat'),{type:'bar',
+    data:{labels:pk,datasets:[
+      {label:'Shounen',data:pk.map(p=>D.platform[p].Shounen||0),backgroundColor:'#378ADD',borderWidth:0,borderRadius:3},
+      {label:'Shoujo',data:pk.map(p=>D.platform[p].Shoujo||0),backgroundColor:'#D4537E',borderWidth:0,borderRadius:3},
+    ]},
+    options:{indexAxis:'y',responsive:true,maintainAspectRatio:false,
+      plugins:{legend:{display:false},tooltip:{callbacks:{label:ctx=>`${ctx.dataset.label}: ${ctx.parsed.x.toLocaleString('pt-BR')}`}}},
+      scales:{x:{ticks:{color:textC,font:bf},grid:{color:gridC}},y:{ticks:{color:textC,font:bf},grid:{color:'transparent'}}}}
+  });
+  document.getElementById('insight-plat').textContent=`⚠ Espectadores de Shoujo aparecem exclusivamente em plataformas físicas e generalistas (TV, VHS/DVD, DVD, YouTube) — sem nenhum registro em Crunchyroll, Funimation, Hulu, Amazon Prime ou Netflix. Isso não é acaso: reflete a ausência de títulos Shoujo relevantes no catálogo dessas plataformas, excluindo o público de um canal que domina o acesso ao anime na era atual.`;
+
+  // 8. Comunidade
+  dc('comm');
+  const ck=Object.keys(D.community).filter(c=>(D.community[c].Shounen||0)+(D.community[c].Shoujo||0)>0).sort((a,b)=>(D.community[b].Shounen||0)-(D.community[a].Shounen||0));
+  leg('legend-comm',[['Shounen','#378ADD'],['Shoujo','#D4537E']]);
+  charts.comm=new Chart(document.getElementById('chart-comm'),{type:'bar',
+    data:{labels:ck,datasets:[
+      {label:'Shounen',data:ck.map(c=>D.community[c].Shounen||0),backgroundColor:'#378ADD',borderWidth:0,borderRadius:3},
+      {label:'Shoujo',data:ck.map(c=>D.community[c].Shoujo||0),backgroundColor:'#D4537E',borderWidth:0,borderRadius:3},
+    ]},
+    options:{responsive:true,maintainAspectRatio:false,
+      plugins:{legend:{display:false},tooltip:{callbacks:{label:ctx=>`${ctx.dataset.label}: ${ctx.parsed.y.toLocaleString('pt-BR')}`}}},
+      scales:{x:{ticks:{color:textC,font:bf},grid:{color:'transparent'}},y:{ticks:{color:textC,font:bf},grid:{color:gridC}}}}
+  });
+
+  // 9. Dispositivo
+  dc('dev');
+  const dvk=Object.keys(D.device).filter(d=>(D.device[d].Shounen||0)+(D.device[d].Shoujo||0)>0).sort((a,b)=>(D.device[b].Shounen||0)-(D.device[a].Shounen||0));
+  leg('legend-dev',[['Shounen','#378ADD'],['Shoujo','#D4537E']]);
+  charts.dev=new Chart(document.getElementById('chart-dev'),{type:'bar',
+    data:{labels:dvk,datasets:[
+      {label:'Shounen',data:dvk.map(d=>D.device[d].Shounen||0),backgroundColor:'#378ADD',borderWidth:0,borderRadius:3},
+      {label:'Shoujo',data:dvk.map(d=>D.device[d].Shoujo||0),backgroundColor:'#D4537E',borderWidth:0,borderRadius:3},
+    ]},
+    options:{responsive:true,maintainAspectRatio:false,
+      plugins:{legend:{display:false},tooltip:{callbacks:{label:ctx=>`${ctx.dataset.label}: ${ctx.parsed.y.toLocaleString('pt-BR')}`}}},
+      scales:{x:{ticks:{color:textC,font:bf},grid:{color:'transparent'}},y:{ticks:{color:textC,font:bf},grid:{color:gridC}}}}
+  });
+
+  // 10. Idade
+  dc('age');
+  leg('legend-age',gLabels.map((l,i)=>[l,gColors[i]]));
+  charts.age=new Chart(document.getElementById('chart-age'),{type:'bar',
+    data:{labels:['Shounen','Shoujo','Seinen'],datasets:genders.map((g,i)=>({label:gLabels[i],data:['Shounen','Shoujo','Seinen'].map(d=>D.age_gender[g]?.[d]||0),backgroundColor:gColors[i],borderWidth:0,borderRadius:3}))},
+    options:{responsive:true,maintainAspectRatio:false,
+      plugins:{legend:{display:false},tooltip:{callbacks:{label:ctx=>`${ctx.dataset.label}: ${ctx.parsed.y?.toFixed(1)} anos`}}},
+      scales:{x:{ticks:{color:textC,font:bf},grid:{color:'transparent'}},y:{min:35,ticks:{color:textC,font:bf,callback:v=>v+' anos'},grid:{color:gridC}}}}
+  });
+  const ageSJ=((D.age_gender.Female?.Shoujo||0)+(D.age_gender.Male?.Shoujo||0))/2;
+  const ageSN=((D.age_gender.Female?.Shounen||0)+(D.age_gender.Male?.Shounen||0))/2;
+  document.getElementById('insight-age').textContent=`✦ Fãs de Shoujo são em média ${(ageSJ-ageSN).toFixed(1)} anos mais velhos — evidência de que o gênero não está convertendo novos espectadores jovens. Nenhum fã de Shoujo no dataset começou a assistir anime após 2009, enquanto Shounen e Seinen continuam atraindo novatos todos os anos. Sem novas produções, o público envelhece sem renovação.`;
+
+  // 11. Merch por gênero espectador
+  dc('merch-g');
+  leg('legend-merch-g',gLabels.map((l,i)=>[l,gColors[i]]));
+  charts['merch-g']=new Chart(document.getElementById('chart-merch-g'),{type:'bar',
+    data:{labels:['Shounen','Shoujo','Seinen'],datasets:genders.map((g,i)=>({label:gLabels[i],data:['Shounen','Shoujo','Seinen'].map(d=>D.merch_gender[g]?.[d]||0),backgroundColor:gColors[i],borderWidth:0,borderRadius:3}))},
+    options:{responsive:true,maintainAspectRatio:false,
+      plugins:{legend:{display:false},tooltip:{callbacks:{label:ctx=>`${ctx.dataset.label}: USD ${ctx.parsed.y?.toFixed(2)}`}}},
+      scales:{x:{ticks:{color:textC,font:bf},grid:{color:'transparent'}},y:{ticks:{color:textC,font:bf,callback:v=>'$'+v.toLocaleString('pt-BR')},grid:{color:gridC}}}}
+  });
+  const mF=D.merch_gender.Female?.Shoujo||0,mFSN=D.merch_gender.Female?.Shounen||0;
+  document.getElementById('insight-merch-g').textContent=mF&&mFSN?`◆ Mulheres fãs de Shoujo gastam USD ${mF.toFixed(0)} em merchandise — ${((mFSN-mF)/mFSN*100).toFixed(0)}% menos que mulheres fãs de Shounen (USD ${mFSN.toFixed(0)}). A diferença provavelmente reflete menor oferta de produtos Shoujo no mercado, não menor capacidade ou disposição de consumo do público feminino.`:'';
+
+  // Summary table
+  const tb=document.getElementById('summary-table');
+  tb.innerHTML='';
+  const tSN2=etots[0]||1,tSJ2=etots[1]||1,tSei=etots[2]||1;
+  const rows2=[
+    ['Espectadores no dataset',(D.count.Shounen||0).toLocaleString('pt-BR'),(D.count.Shoujo||0).toLocaleString('pt-BR'),(D.count.Seinen||0).toLocaleString('pt-BR'),`${((sj-sn)/sn*100).toFixed(0)}% vs Shounen`],
+    ['Horas/semana (média)',(D.watch_hours.Shounen||0).toFixed(1)+'h',(D.watch_hours.Shoujo||0).toFixed(1)+'h',(D.watch_hours.Seinen||0).toFixed(1)+'h',D.watch_hours.Shounen&&D.watch_hours.Shoujo?((D.watch_hours.Shoujo-D.watch_hours.Shounen)).toFixed(1)+'h':'—'],
+    ['Gasto merchandise (média)','$'+(D.merch.Shounen||0).toFixed(0),'$'+(D.merch.Shoujo||0).toFixed(0),'$'+(D.merch.Seinen||0).toFixed(0),D.merch.Shounen&&D.merch.Shoujo?((D.merch.Shoujo/D.merch.Shounen-1)*100).toFixed(0)+'%':'—'],
+    ['Engajamento alto (%)',(hSN/tSN2*100).toFixed(0)+'%',(hSJ/tSJ2*100).toFixed(0)+'%',((D.engagement.High.Seinen||0)/tSei*100).toFixed(0)+'%','—'],
+    ['Leitores de mangá (%)',(D.manga_pct.Shounen||0)+'%',(D.manga_pct.Shoujo||0)+'%',(D.manga_pct.Seinen||0)+'%','Semelhante'],
+    ['Em plataformas streaming','Sim','Não','Sim','Ausência total'],
+    ['Fãs com início após 2009','Sim','Não','Sim','Ruptura total'],
+    ['Idade média (anos)',ageSN.toFixed(1),ageSJ.toFixed(1),(((D.age_gender.Female?.Seinen||0)+(D.age_gender.Male?.Seinen||0))/2).toFixed(1),`+${(ageSJ-ageSN).toFixed(1)} anos`],
+  ];
+  rows2.forEach(([label,sn2,sj2,sei,diff])=>{
+    const tr=document.createElement('tr');
+    const isNeg=typeof diff==='string'&&(diff.startsWith('-')||diff.includes('Não')||diff.includes('total'));
+    tr.innerHTML=`<td style="font-family:'Courier New',monospace;font-size:12px;color:var(--muted)">${label}</td><td><span class="badge badge-shounen">${sn2}</span></td><td><span class="badge badge-shoujo">${sj2}</span></td><td><span class="badge badge-seinen">${sei}</span></td><td style="font-family:'Courier New',monospace;font-size:12px;color:${isNeg?'#A32D2D':'var(--muted)'}">${diff}</td>`;
+    tb.appendChild(tr);
+  });
+
+  document.getElementById('insight-final').textContent=`✦ Síntese: este dataset de espectadores aprofunda e confirma os padrões do MyAnimeList. O público de Shoujo assiste menos horas (menor oferta de conteúdo), gasta menos em merchandise (menor oferta de produtos), é mais velho (sem renovação de público desde 2010), não tem acesso via plataformas de streaming especializadas e está preso em eras passadas. Todos esses fatores se retroalimentam: sem produção nova, não há interesse das plataformas; sem plataformas, não há alcance; sem alcance, não há novos fãs. A subvalorização do Shoujo não é um preconceito isolado — é uma estrutura.`;
+
+  const now=new Date().toLocaleString('pt-BR');
+  document.getElementById('last-updated').textContent=`${total.toLocaleString('pt-BR')} espectadores analisados · Processado em ${now}`;
+  document.getElementById('footer-updated').textContent=`Atualizado: ${now}`;
+}
+
+document.getElementById('csv-file').addEventListener('change',e=>{
+  const file=e.target.files[0];
+  if(!file)return;
+  document.getElementById('csv-status').textContent='carregando...';
+  document.getElementById('csv-status').className='file-status';
+  Papa.parse(file,{header:true,skipEmptyLines:true,complete:res=>{
+    try{parseCSV(res.data);document.getElementById('csv-status').textContent=`✓ ${file.name} (${res.data.length.toLocaleString('pt-BR')} linhas)`;document.getElementById('csv-status').className='file-status ok';render();}
+    catch(e){document.getElementById('csv-status').textContent='✗ erro ao processar';document.getElementById('csv-status').className='file-status err';console.error(e);}
+  },error:()=>{document.getElementById('csv-status').textContent='✗ erro ao ler';document.getElementById('csv-status').className='file-status err';}});
+});
+
+window.addEventListener('DOMContentLoaded',()=>{setTimeout(()=>{render();document.getElementById('loading-overlay').style.display='none';},400);});
+</script>
+</body>
+</html>
